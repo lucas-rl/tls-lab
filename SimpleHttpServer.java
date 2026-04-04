@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -15,42 +13,37 @@ public class SimpleHttpServer {
             Socket clientSocket = serverSocket.accept();
             System.out.println("\n==== New Connection ===");
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            //Get request
+            InputStream input = clientSocket.getInputStream();
 
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
-            //1. Request line
-            String requestLine = reader.readLine();
-            System.out.println("Request Line " + requestLine);
+            byte[] chunk = new byte[1024];
+            int bytesRead;
 
+            while ((bytesRead = input.read(chunk)) != -1) {
+                buffer.write(chunk, 0, bytesRead);
 
-
-
-            //2. Headers
-            String line;
-            int contentLength = 0;
-            System.out.println("Headers");
-            while((line = reader.readLine()) != null && !line.isEmpty()){
-                System.out.println(line);
-                if(line.toLowerCase().startsWith("content-length:")){
-                    contentLength = Integer.parseInt(line.split(":")[1].trim());
-                }
+                if (buffer.size() > 0) break; // simple for now
             }
+            byte[] requestData = buffer.toByteArray();
+            String request = new String(requestData);
 
-            //3. Body (if exists)
-            char[] bodyChars = new char[contentLength];
-            if(contentLength > 0){
-                reader.read(bodyChars, 0, contentLength);
-                String body = new String(bodyChars);
-                System.out.println("Body: " + body);
-            }
+            System.out.println("REQUEST:");
+            System.out.println(request);
 
-            //Send basic HTTP response
-            PrintWriter writer = new PrintWriter(clientSocket.getOutputStream());
-            writer.print("HTTP/1.1 200 OK\r\n");
-            writer.print("Content-Type: text/plain\r\n");
-            writer.print("\r\n");
-            writer.print("Hello from server");
-            writer.flush();
+
+            //Send response
+            String response =
+                    "HTTP/1.1 200 OK\r\n" +
+                    "Content-Type: text/plain\r\n" +
+                    "\r\n" +
+                    "Hello from server";
+
+
+            OutputStream outputStream = clientSocket.getOutputStream();
+            outputStream.write(response.getBytes());
+            outputStream.flush();
 
             System.out.println("\n=== Connection Finished ====");
 

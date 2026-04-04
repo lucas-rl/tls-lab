@@ -52,7 +52,7 @@ public class SimpleHttpServer {
             writer.print("Hello from server");
             writer.flush();
 
-            System.out.println("Connection Finished");
+            System.out.println("\n=== Connection Finished ====");
 
             clientSocket.close();
         }

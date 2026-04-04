@@ -5,7 +5,7 @@ import java.net.Socket;
 
 public class SimpleHttpClient {
     public static void main(String[] args) throws Exception {
-        Socket socket = new Socket("localhost", 8080);
+        Socket socket = new Socket("localhost", 9090);
 
         String jsonBody = "{\"user\":\"admin\"}";
 
@@ -13,7 +13,7 @@ public class SimpleHttpClient {
         writer.print("GET /hello HTTP/1.1\r\n");
         writer.print("Host: localhost\r\n");
         writer.print("Content-Type: application/json\r\n");
-        writer.print("Content-Length: "+ jsonBody.length() +"\r\n");
+        //writer.print("Content-Length: "+ jsonBody.length() +"\r\n");
         writer.print("\r\n");
         writer.println(jsonBody);
         writer.flush();

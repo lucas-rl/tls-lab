@@ -38,11 +38,27 @@ public class SimpleProxy {
             PrintWriter serverWriter = new PrintWriter(serverSocket.getOutputStream());
             //Forward request line + headers
             String line;
+            int contentLength = 0;
             while ((line = clientReader.readLine()) != null && !line.isEmpty()) {
                 System.out.println("CLIENT -> " + line);
                 serverWriter.print(line + "\r\n");
+                if (line.toLowerCase().startsWith("content-length:")) {
+                    contentLength = Integer.parseInt(line.split(":")[1].trim());
+                }
             }
             serverWriter.print("\r\n");
+
+            //Read and foward body
+            char[] bodyChars = new char[contentLength];
+            if (contentLength > 0) {
+                clientReader.read(bodyChars, 0, contentLength);
+                String body = new String(bodyChars);
+                System.out.println("CLIENT BODY -> " + body);
+
+                // Forward body (we will modify next)
+                serverWriter.print(body);
+            }
+
             serverWriter.flush();
 
 

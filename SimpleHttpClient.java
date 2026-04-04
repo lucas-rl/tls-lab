@@ -13,7 +13,7 @@ public class SimpleHttpClient {
         writer.print("GET /hello HTTP/1.1\r\n");
         writer.print("Host: localhost\r\n");
         writer.print("Content-Type: application/json\r\n");
-        //writer.print("Content-Length: "+ jsonBody.length() +"\r\n");
+        writer.print("Content-Length: "+ jsonBody.length() +"\r\n");
         writer.print("\r\n");
         writer.println(jsonBody);
         writer.flush();

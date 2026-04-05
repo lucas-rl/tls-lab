@@ -26,8 +26,9 @@ public class SimpleHttpServer {
 
                 if (buffer.size() > 0) break; // simple for now
             }
-            byte[] requestData = buffer.toByteArray();
-            String request = new String(requestData);
+            byte[] encryptedRequest = buffer.toByteArray();
+            byte[] decryptedResquest = CryptoUtils.decrypt(encryptedRequest);
+            String request = new String(decryptedResquest);
 
             System.out.println("REQUEST:");
             System.out.println(request);
@@ -40,9 +41,9 @@ public class SimpleHttpServer {
                     "\r\n" +
                     "Hello from server";
 
-
+            byte[] encryptedResponse = CryptoUtils.encrypt(response.getBytes());
             OutputStream outputStream = clientSocket.getOutputStream();
-            outputStream.write(response.getBytes());
+            outputStream.write(encryptedResponse);
             outputStream.flush();
 
             System.out.println("\n=== Connection Finished ====");

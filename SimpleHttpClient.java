@@ -5,7 +5,6 @@ public class SimpleHttpClient {
     public static void main(String[] args) throws Exception {
         Socket socket = new Socket("localhost", 9090);
 
-
         String request =
                 "POST /login HTTP/1.1\r\n" +
                         "Host: localhost\r\n" +
@@ -15,7 +14,8 @@ public class SimpleHttpClient {
                         "{\"user\":\"admin\"}";
 
         OutputStream outputStream = socket.getOutputStream();
-        outputStream.write(request.getBytes());
+        byte[] encryptedRequest = CryptoUtils.encrypt(request.getBytes());
+        outputStream.write(encryptedRequest);
         outputStream.flush();
 
         //Get response
@@ -31,8 +31,9 @@ public class SimpleHttpClient {
 
             if (buffer.size() > 0) break; // simple for now
         }
-        byte[] responseData = buffer.toByteArray();
-        String response = new String(responseData);
+        byte[] encryptedResponse = buffer.toByteArray();
+        byte[] decryptedResponse = CryptoUtils.decrypt(encryptedResponse);
+        String response = new String(decryptedResponse);
 
         System.out.println("RESPONSE:");
         System.out.println(response);

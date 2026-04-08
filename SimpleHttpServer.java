@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyPair;
 
 public class SimpleHttpServer {
     public static void main(String[] args) throws Exception{
@@ -14,25 +15,34 @@ public class SimpleHttpServer {
             System.out.println("\n==== New Connection ===");
 
             //Get request
-            InputStream input = clientSocket.getInputStream();
+            InputStream inputStream = clientSocket.getInputStream();
+            OutputStream outputStream = clientSocket.getOutputStream();
 
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] hello = getData(inputStream);
 
-            byte[] chunk = new byte[1024];
-            int bytesRead;
+            String helloMessage = new String(hello);
+            if(!helloMessage.equals("HELLO")) clientSocket.close();
 
-            while ((bytesRead = input.read(chunk)) != -1) {
-                buffer.write(chunk, 0, bytesRead);
+            //Send public key
+            KeyPair keyPair = CryptoUtils.generateRSAKeyPair();
+            String publicKeyBase64 = CryptoUtils.encodeBase64(keyPair.getPublic().getEncoded());
+            outputStream.write(publicKeyBase64.getBytes());
+            outputStream.flush();
 
-                if (buffer.size() > 0) break; // simple for now
-            }
-            byte[] encryptedRequest = buffer.toByteArray();
-            byte[] decryptedResquest = CryptoUtils.decrypt(encryptedRequest);
-            String request = new String(decryptedResquest);
+            byte[] symetricKeyRSAEncryptedData = getData(inputStream);
+            byte symmetricKey = CryptoUtils.rsaDecrypt(symetricKeyRSAEncryptedData, keyPair.getPrivate())[0];
+
+            //Send ok
+            outputStream.write("OK".getBytes());
+            outputStream.flush();
+
+            //Read symmetric encrypted request
+            byte[] encryptedRequestData = getData(inputStream);
+            byte[] request = CryptoUtils.decrypt(encryptedRequestData, symmetricKey);
+
 
             System.out.println("REQUEST:");
-            System.out.println(request);
-
+            System.out.println(new String(request));
 
             //Send response
             String response =
@@ -41,8 +51,7 @@ public class SimpleHttpServer {
                     "\r\n" +
                     "Hello from server";
 
-            byte[] encryptedResponse = CryptoUtils.encrypt(response.getBytes());
-            OutputStream outputStream = clientSocket.getOutputStream();
+            byte[] encryptedResponse = CryptoUtils.encrypt(response.getBytes(), symmetricKey);
             outputStream.write(encryptedResponse);
             outputStream.flush();
 
@@ -50,5 +59,17 @@ public class SimpleHttpServer {
 
             clientSocket.close();
         }
+    }
+
+    private static byte[] getData(InputStream input) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = input.read(chunk)) != -1) {
+            buffer.write(chunk, 0, bytesRead);
+
+            if (buffer.size() > 0) break; // simple for now
+        }
+        return buffer.toByteArray();
     }
 }

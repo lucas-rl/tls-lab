@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.Socket;
 import java.security.KeyFactory;
@@ -11,25 +12,23 @@ public class SimpleHttpClient {
         InputStream inputStream = socket.getInputStream();
         OutputStream outputStream = socket.getOutputStream();
 
-        //Send hello
-        outputStream.write("HELLO".getBytes());
-        outputStream.flush();
+        DataManager dataManager = new DataManager(outputStream, inputStream);
 
-        //Receive public key
-        String RSAPublicKey = new String(getData(inputStream));
+        //Send hello
+        dataManager.sendData("HELLO".getBytes());
+
+        //Receive public key, generate and send
+        String RSAPublicKey = new String(dataManager.getData());
         byte[] pubKeyBytes = CryptoUtils.decodeBase64(RSAPublicKey);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PublicKey publicKey = keyFactory.generatePublic(
                 new X509EncodedKeySpec(pubKeyBytes)
         );
-
-        //Send symmetric key (RSA encrypted)
         byte symmetricKey = 0x0F;
-        outputStream.write(CryptoUtils.rsaEncrypt(new byte[]{symmetricKey}, publicKey));
-        outputStream.flush();
+        dataManager.sendData(CryptoUtils.rsaEncrypt(new byte[]{symmetricKey}, publicKey));
 
         //Receive ok
-        byte[] ok = getData(inputStream);
+        byte[] ok = dataManager.getData();
         if(!(new String(ok)).equals("OK")) socket.close();
 
         //SendRequest
@@ -37,15 +36,14 @@ public class SimpleHttpClient {
                 "POST /login HTTP/1.1\r\n" +
                         "Host: localhost\r\n" +
                         "Content-Type: application/json\r\n" +
-                        "Content-Length: 18\r\n" +
+                        "Content-Length: 16\r\n" +
                         "\r\n" +
                         "{\"user\":\"admin\"}";
 
-        outputStream.write(CryptoUtils.encrypt(request.getBytes(), symmetricKey));
-        outputStream.flush();
+        dataManager.sendData(CryptoUtils.encrypt(request.getBytes(), symmetricKey));
 
         //Get response
-        byte[] responseEncrypted = getData(inputStream);
+        byte[] responseEncrypted = dataManager.getData();
         String response = new String(CryptoUtils.decrypt(responseEncrypted, symmetricKey));
 
         System.out.println("RESPONSE:");
@@ -55,17 +53,5 @@ public class SimpleHttpClient {
         System.out.println("Connection Finished");
 
         socket.close();
-    }
-
-    private static byte[] getData(InputStream input) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        byte[] chunk = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = input.read(chunk)) != -1) {
-            buffer.write(chunk, 0, bytesRead);
-
-            if (buffer.size() > 0) break; // simple for now
-        }
-        return buffer.toByteArray();
     }
 }

@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -18,7 +19,9 @@ public class SimpleHttpServer {
             InputStream inputStream = clientSocket.getInputStream();
             OutputStream outputStream = clientSocket.getOutputStream();
 
-            byte[] hello = getData(inputStream);
+            DataManager dataManager = new DataManager(outputStream, inputStream);
+
+            byte[] hello = dataManager.getData();
 
             String helloMessage = new String(hello);
             if(!helloMessage.equals("HELLO")) clientSocket.close();
@@ -26,18 +29,17 @@ public class SimpleHttpServer {
             //Send public key
             KeyPair keyPair = CryptoUtils.generateRSAKeyPair();
             String publicKeyBase64 = CryptoUtils.encodeBase64(keyPair.getPublic().getEncoded());
-            outputStream.write(publicKeyBase64.getBytes());
-            outputStream.flush();
+            dataManager.sendData(publicKeyBase64.getBytes());
 
-            byte[] symetricKeyRSAEncryptedData = getData(inputStream);
+            //get symmetric key
+            byte[] symetricKeyRSAEncryptedData = dataManager.getData();
             byte symmetricKey = CryptoUtils.rsaDecrypt(symetricKeyRSAEncryptedData, keyPair.getPrivate())[0];
 
             //Send ok
-            outputStream.write("OK".getBytes());
-            outputStream.flush();
+            dataManager.sendData("OK".getBytes());
 
             //Read symmetric encrypted request
-            byte[] encryptedRequestData = getData(inputStream);
+            byte[] encryptedRequestData = dataManager.getData();
             byte[] request = CryptoUtils.decrypt(encryptedRequestData, symmetricKey);
 
 
@@ -52,24 +54,12 @@ public class SimpleHttpServer {
                     "Hello from server";
 
             byte[] encryptedResponse = CryptoUtils.encrypt(response.getBytes(), symmetricKey);
-            outputStream.write(encryptedResponse);
-            outputStream.flush();
+            dataManager.sendData(encryptedResponse);
+
 
             System.out.println("\n=== Connection Finished ====");
 
             clientSocket.close();
         }
-    }
-
-    private static byte[] getData(InputStream input) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        byte[] chunk = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = input.read(chunk)) != -1) {
-            buffer.write(chunk, 0, bytesRead);
-
-            if (buffer.size() > 0) break; // simple for now
-        }
-        return buffer.toByteArray();
     }
 }

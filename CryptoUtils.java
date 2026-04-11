@@ -37,6 +37,18 @@ public class CryptoUtils {
         return cipher.doFinal(data);
     }
 
+    public static byte[] rsaEncrypt(byte[] data, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, privateKey);
+        return cipher.doFinal(data);
+    }
+
+    public static byte[] rsaDecrypt(byte[] data, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, publicKey);
+        return cipher.doFinal(data);
+    }
+
     public static String encodeBase64(byte[] data){
         return Base64.getEncoder().encodeToString(data);
     }

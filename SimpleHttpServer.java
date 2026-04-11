@@ -3,6 +3,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyPair;
+import java.security.MessageDigest;
 
 public class SimpleHttpServer {
     public static void main(String[] args) throws Exception{
@@ -10,6 +11,10 @@ public class SimpleHttpServer {
         ServerSocket serverSocket = new ServerSocket(port);
 
         System.out.println("Server running on port " + port);
+
+        KeyPair keyPair = CryptoUtils.generateRSAKeyPair();
+
+        Certificate certificate = generateCetificate(keyPair);
 
         while(true){
             Socket clientSocket = serverSocket.accept();
@@ -26,10 +31,8 @@ public class SimpleHttpServer {
             String helloMessage = new String(hello);
             if(!helloMessage.equals("HELLO")) clientSocket.close();
 
-            //Send public key
-            KeyPair keyPair = CryptoUtils.generateRSAKeyPair();
-            String publicKeyBase64 = CryptoUtils.encodeBase64(keyPair.getPublic().getEncoded());
-            dataManager.sendData(publicKeyBase64.getBytes());
+            //Send cert
+            dataManager.sendData(certificate.serialize().getBytes());
 
             //get symmetric key
             byte[] symetricKeyRSAEncryptedData = dataManager.getData();
@@ -61,5 +64,32 @@ public class SimpleHttpServer {
 
             clientSocket.close();
         }
+    }
+
+    private static Certificate generateCetificate(KeyPair keyPair) throws Exception {
+        String pubKeyBase64 = CryptoUtils.encodeBase64(keyPair.getPublic().getEncoded());
+        String identity = "localhost";
+
+        // data to sign
+        String data = pubKeyBase64 + "|" + identity;
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(data.getBytes());
+
+        // sign with CA private key
+        byte[] signatureBytes = CryptoUtils.rsaEncrypt(
+                hash,
+                SimpleCA.CA_PRIVATE_KEY   // 🔥 signing
+        );
+
+        String signatureBase64 = CryptoUtils.encodeBase64(signatureBytes);
+
+        // build certificate
+        Certificate cert = new Certificate();
+        cert.publicKeyBase64 = pubKeyBase64;
+        cert.identity = identity;
+        cert.signatureBase64 = signatureBase64;
+
+        return cert;
     }
 }
